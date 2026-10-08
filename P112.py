@@ -232,7 +232,6 @@ model_swa = FixedModel().to(device)
 swa_model = AveragedModel(model_swa)
 optimizer_swa = get_optimizer(model_swa, lr=0.001)
 
-# تنظیمات SWA
 SWA_START_EPOCH = 100  
 swa_scheduler = SWALR(optimizer_swa, swa_lr=0.001, anneal_epochs=5, anneal_strategy='cos')
 scheduler_cosine = CosineAnnealingLR(optimizer_swa, T_max=SWA_START_EPOCH, eta_min=1e-6)
