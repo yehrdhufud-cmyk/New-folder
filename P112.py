@@ -16,7 +16,7 @@ print("=" * 60)
 print("PART 1: DATA PREPARATION & MODEL DEFINITION")
 print("=" * 60)
 
-# تولید داده مصنوعی
+
 n_samples = 2000
 
 x1 = np.random.uniform(-3, 3, n_samples)
@@ -24,22 +24,22 @@ x2 = np.random.uniform(-3, 3, n_samples)
 x3 = np.random.uniform(-3, 3, n_samples)
 x4 = np.random.uniform(-3, 3, n_samples)
 
-# تابع هدف پیچیده با اندرکنش‌ها
+
 y = 2 * np.sin(x1 * np.pi) + 0.5 * np.cos(x2 * 3) + 0.3 * (x3 ** 3) + 0.1 * (x4 ** 2)
 y += np.sin(x1 * x2) * 0.5
 y += np.cos(x3 * x4) * 0.3
 y += 0.2 * np.abs(x1 + x2 + x3 + x4)
 
-# اضافه کردن نویز
+
 noise = np.random.normal(0, 0.8, n_samples)
 y = y + noise
 
 X = np.column_stack([x1, x2, x3, x4])
 
-# تقسیم داده
+
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# استانداردسازی
+
 scaler_X = StandardScaler()
 scaler_y = StandardScaler()
 
@@ -49,19 +49,19 @@ X_test = scaler_X.transform(X_test)
 y_train = scaler_y.fit_transform(y_train.reshape(-1, 1)).ravel()
 y_test = scaler_y.transform(y_test.reshape(-1, 1)).ravel()
 
-# تبدیل به تنسور
+
 X_train_t = torch.tensor(X_train, dtype=torch.float32)
 y_train_t = torch.tensor(y_train, dtype=torch.float32).reshape(-1, 1)
 X_test_t = torch.tensor(X_test, dtype=torch.float32)
 y_test_t = torch.tensor(y_test, dtype=torch.float32).reshape(-1, 1)
 
-# دیتالودر
+
 train_loader = DataLoader(TensorDataset(X_train_t, y_train_t), batch_size=64, shuffle=True)
 test_loader = DataLoader(TensorDataset(X_test_t, y_test_t), batch_size=64)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# تعریف معماری مدل
+
 class FixedModel(nn.Module):
     def __init__(self):
         super().__init__()
@@ -103,7 +103,7 @@ class FixedModel(nn.Module):
         out = self.fc5(out)
         return out
 
-# تنظیم weight decay متفاوت
+
 def get_optimizer(model, lr=0.1):
     weight_decay_params = []
     no_weight_decay_params = []
@@ -134,13 +134,13 @@ print("=" * 60)
 
 
 # ================== PART 2: REGULAR MODEL TRAINING ==================
-# این بخش را بعد از بخش اول اجرا کنید
+
 
 print("\n" + "=" * 60)
 print("PART 2: TRAINING REGULAR MODEL (WITHOUT SWA)")
 print("=" * 60)
 
-# ساخت مدل
+
 model_regular = FixedModel().to(device)
 optimizer_regular = get_optimizer(model_regular, lr=0.001)
 scheduler_regular = optim.lr_scheduler.ReduceLROnPlateau(optimizer_regular, mode='min', patience=20, factor=0.7)
@@ -198,7 +198,7 @@ print("\n" + "=" * 60)
 print("PART 2 FINISHED - Regular Model Training Complete")
 print("=" * 60)
 
-# ارزیابی مدل معمولی
+
 model_regular.load_state_dict(torch.load("regular_best_model.pth"))
 model_regular.eval()
 
@@ -219,8 +219,7 @@ print("=" * 60)
 
 
 # ================== PART 3A: SWA MODEL TRAINING ==================
-# این بخش را بعد از بخش دوم اجرا کنید
-# (نیاز به import زیر دارد)
+
 from torch.optim.swa_utils import AveragedModel, SWALR
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
@@ -228,13 +227,13 @@ print("\n" + "=" * 60)
 print("PART 3A: TRAINING SWA MODEL (Stochastic Weight Averaging)")
 print("=" * 60)
 
-# ساخت مدل جدید (آموزش از صفر)
+
 model_swa = FixedModel().to(device)
 swa_model = AveragedModel(model_swa)
 optimizer_swa = get_optimizer(model_swa, lr=0.001)
 
 # تنظیمات SWA
-SWA_START_EPOCH = 100  # از اپوک 100 شروع به میانگین‌گیری می‌کنیم
+SWA_START_EPOCH = 100  
 swa_scheduler = SWALR(optimizer_swa, swa_lr=0.001, anneal_epochs=5, anneal_strategy='cos')
 scheduler_cosine = CosineAnnealingLR(optimizer_swa, T_max=SWA_START_EPOCH, eta_min=1e-6)
 
@@ -259,15 +258,15 @@ for epoch in range(epochs):
     
     train_loss /= len(train_loader)
     
-    # اعمال SWA بعد از اپوک شروع
+    
     if epoch >= SWA_START_EPOCH:
-        swa_model.update_parameters(model_swa)  # به‌روزرسانی میانگین متحرک
+        swa_model.update_parameters(model_swa)  
         swa_scheduler.step()
         optimizer_swa.param_groups[0]['lr'] = swa_scheduler.get_last_lr()[0]
     else:
         scheduler_cosine.step()
     
-    # ارزیابی
+    
     model_swa.eval()
     val_loss = 0
     with torch.no_grad():
@@ -296,12 +295,10 @@ print("\n" + "=" * 60)
 print("PART 3A FINISHED - SWA Model Training Complete")
 print("=" * 60)
 
-# ذخیره مدل SWA برای استفاده در قسمت بعد
+
 torch.save(swa_model.state_dict(), "swa_model.pth")
 
 
-# ================== PART 3B1: EVALUATING SWA MODEL ==================
-# Run this immediately after PART 3A
 
 print("\n" + "=" * 60)
 print("PART 3B1: EVALUATING SWA MODEL & CALCULATING METRICS")
